@@ -41,11 +41,11 @@ def test_multiply2():
 
 
 def test_divide1():
-    assert_true_equal(calculator.calculate("6 / 2"), 3)
+    assert_true_equal(calculator.calculate("6 d 2"), 3)
 
 
 def test_divide2():
-    assert_true_equal(calculator.calculate("12 / 2 / 3.0"), 2.0)
+    assert_true_equal(calculator.calculate("12 d 2 d 3.0"), 2.0)
 
 
 def test_complex1():
@@ -53,7 +53,7 @@ def test_complex1():
 
 
 def test_complex2():
-    assert_true_equal(calculator.calculate("-5 + 10  * 4 - 10 / 2.0"), 30.0)
+    assert_true_equal(calculator.calculate("-5 + 10  * 4 - 10 d 2.0"), 30.0)
 
 
 def test_complex3():
