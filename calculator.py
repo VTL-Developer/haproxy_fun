@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from flask import Flask, jsonify
 from werkzeug.routing import BaseConverter
 
@@ -19,6 +20,10 @@ class RegexConverter(BaseConverter):
 app.url_map.converters['regex'] = RegexConverter
 
 
+def get_pid():
+    return 1  # TODO: Get the proper PID
+
+
 @app.route('/<n>/')
 def calculate(n):
     n = WHITESPACE_REGEX_PAT.sub('', n)
@@ -27,13 +32,35 @@ def calculate(n):
     answer = _calculate(n)
 
     if IS_SERVER:
-        return jsonify({
-            "answer": answer
+        answer = jsonify({
+            'answer': answer['answer'],
+            'pid': get_pid(),
+            'stack': answer['stack'],
+            'values': n,
+            'operation': 'calculate',
         })
-    else:
+
+    return answer
+
+
+def parse_answer(func):
+    def _func(n):
+        answer = func(n)
+        if IS_SERVER and type(answer) not in [str, unicode, dict]:
+            return {
+                'answer': answer,
+                'stack': [],
+                'values': answer,
+                'operation': 'none',
+                'pid': get_pid(),
+            }
+
         return answer
 
+    return _func
 
+
+@parse_answer
 def _calculate(n):
     global OPERATORS
     if not n:
@@ -47,11 +74,24 @@ def _calculate(n):
             continue
 
         parts = n.split(op['symbol'])
+        values = deepcopy(parts)
+        stack = []
         m = parts.pop(0)
 
         while parts:
-            m = op['func'](m, parts.pop(0))
+            if IS_SERVER:
+                stack.append(op['func'](m, parts.pop(0)))
+                m = stack[-1]['answer']
+            else:
+                m = op['func'](m, parts.pop(0))
 
+        if IS_SERVER:
+            return {
+                'answer': m,
+                'stack': stack,
+                'values': values,
+                'operation': op['func'].__name__,
+            }
         return m
 
     if '.' in n:
@@ -62,40 +102,46 @@ def _calculate(n):
 
 @app.route("/<operation>/<n>/<m>/")
 def request_answer(operation, n, m):
-    answer = eval("%s('%s', '%s')" % (operation, n, m))
-    return jsonify({
-        operation: answer
-    })
+    return eval("%s('%s', '%s')" % (operation, n, m))
 
 
 def can_perform(func):
     def _func(n, m):
-        if (not IS_SERVER) or func.__name__ in CAN_PERFORM:
+        n, m = _calculate(n), _calculate(m)
+        if not IS_SERVER:
             return func(n, m)
+        elif func.__name__ in CAN_PERFORM:
+            answer = func(n['answer'], m['answer'])
+            return {
+                'answer': answer,
+                'stack': [n['stack'], m['stack']],
+                'values': [n['answer'], m['answer']],
+                'operation': func.__name__,
+            }
         else:
-            return request_answer(func.__name, n, m)
+            return request_answer(func.__name__, n, m)
 
     return _func
 
 
 @can_perform
 def multiply(n, m):
-    return _calculate(n) * _calculate(m)
+    return n * m
 
 
 @can_perform
 def add(n, m):
-    return _calculate(n) + _calculate(m)
+    return n + m
 
 
 @can_perform
 def subtract(n, m):
-    return _calculate(n) - _calculate(m)
+    return n - m
 
 
 @can_perform
 def divide(n, m):
-    return _calculate(n) / _calculate(m)
+    return n / m
 
 
 OPERATORS = [
