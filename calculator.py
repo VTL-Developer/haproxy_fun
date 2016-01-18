@@ -104,7 +104,7 @@ def request_answer(operation, n, m):
 def can_perform(func):
     def _func(n, m):
         if not IS_SERVER:
-            return func(n, m)
+            return func(_calculate(n), _calculate(m))
         else:
             n, m = _calculate(n), _calculate(m)
 
