@@ -1,0 +1,30 @@
+defaults
+	log global
+	mode http
+	retries 1
+	option redispatch
+	timeout connect 5000
+	timeout client 10000
+	timeout server 10000
+
+listen calculator 0.0.0.0:8000/calculate/
+	mode http
+	stats enable
+	balance roundrobin
+	option httpclose
+	option forwardfor
+	{% for s in servers -%}
+	server s{{ s['port'] }} localhost:{{ s['port']}}
+	{% endfor -%}
+
+{% for operation in operations %}
+listen {{operation}} 0.0.0.0:8000/{{operation}}/
+	mode http
+	stats enable
+	balance roundrobin
+	option httpclose
+	option forwardfor
+	{% for s in operations[operation] -%}
+	server s{{ s['port'] }} localhost:{{ s['port']}}
+	{% endfor -%}
+{% endfor %}
