@@ -1,6 +1,7 @@
 import re
 from copy import deepcopy
 from flask import Flask, jsonify
+from argparse import ArgumentParser
 from werkzeug.routing import BaseConverter
 
 app = Flask(__name__)
@@ -8,23 +9,14 @@ WHITESPACE_REGEX_PAT = re.compile(r'\s')
 SUBTRACT_REGEX_PAT = re.compile(r'-\+|\+-')
 IS_SERVER = False
 CAN_PERFORM = []
-
-
-class RegexConverter(BaseConverter):
-
-    def __init__(self, url_map, *items):
-        super(RegexConverter, self).__init__(url_map)
-        self.regex = items[0]
-
-
-app.url_map.converters['regex'] = RegexConverter
+SERVER_PROXY = "http://localhost:8000/"
 
 
 def get_pid():
     return 1  # TODO: Get the proper PID
 
 
-@app.route('/<n>/')
+@app.route('/calculate/<n>/')
 def calculate(n):
     n = WHITESPACE_REGEX_PAT.sub('', n)
     n = SUBTRACT_REGEX_PAT.sub('-', n)
@@ -102,7 +94,7 @@ def _calculate(n):
 
 @app.route("/<operation>/<n>/<m>/")
 def request_answer(operation, n, m):
-    return eval("%s('%s', '%s')" % (operation, n, m))
+    return jsonify(eval("%s('%s', '%s')" % (operation, n, m)))
 
 
 def can_perform(func):
@@ -154,5 +146,23 @@ OPERATORS = [
 
 if __name__ == "__main__":
     IS_SERVER = True
-    CAN_PERFORM = ["add", "multiply", "subtract", "divide"]
-    app.run(debug=True)
+    parser = ArgumentParser()
+    parser.add_argument("--add", dest="add", default=1, type=int)
+    parser.add_argument("--multiply", dest="multiply", default=1, type=int)
+    parser.add_argument("--subtract", dest="subtract", default=1, type=int)
+    parser.add_argument("--divide", dest="divide", default=1, type=int)
+    parser.add_argument("--port", dest="port", default=8000, type=int)
+    opts = parser.parse_args()
+    if opts.add:
+        CAN_PERFORM.append('add')
+
+    if opts.subtract:
+        CAN_PERFORM.append('subtract')
+
+    if opts.multiply:
+        CAN_PERFORM.append('multiply')
+
+    if opts.divide:
+        CAN_PERFORM.append('divide')
+
+    app.run(debug=True, port=opts.port)
