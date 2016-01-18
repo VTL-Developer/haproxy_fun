@@ -20,7 +20,7 @@ for sec in scp.sections():
         PORT_OFFSET += 1
 
 for opt in options:
-    servers_that_support[opt] = [s for s in servers if s[opt]]
+    servers_that_support[opt] = [s for s in servers if int(s[opt])]
     assert len(servers_that_support[opt]), ("A server is needed to support %s"
                                             % opt)
 

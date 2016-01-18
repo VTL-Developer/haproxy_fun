@@ -2,7 +2,10 @@ import re
 from copy import deepcopy
 from flask import Flask, jsonify
 from argparse import ArgumentParser
-from werkzeug.routing import BaseConverter
+from urlparse import urljoin
+from requests import get
+from json import loads as json_loads
+from os import getpid
 
 app = Flask(__name__)
 WHITESPACE_REGEX_PAT = re.compile(r'\s')
@@ -10,10 +13,7 @@ SUBTRACT_REGEX_PAT = re.compile(r'-\+|\+-')
 IS_SERVER = False
 CAN_PERFORM = []
 SERVER_PROXY = "http://localhost:8000/"
-
-
-def get_pid():
-    return 1  # TODO: Get the proper PID
+SERVER_PORT = 8000
 
 
 @app.route('/calculate/<n>/')
@@ -26,10 +26,11 @@ def calculate(n):
     if IS_SERVER:
         answer = jsonify({
             'answer': answer['answer'],
-            'pid': get_pid(),
+            'pid': getpid(),
             'stack': answer['stack'],
             'values': n,
             'operation': 'calculate',
+            'port': SERVER_PORT,
         })
 
     return answer
@@ -44,7 +45,8 @@ def parse_answer(func):
                 'stack': [],
                 'values': answer,
                 'operation': 'none',
-                'pid': get_pid(),
+                'pid': getpid(),
+                'port': SERVER_PORT,
             }
 
         return answer
@@ -83,6 +85,8 @@ def _calculate(n):
                 'stack': stack,
                 'values': values,
                 'operation': op['func'].__name__,
+                'pid': getpid(),
+                'port': SERVER_PORT,
             }
         return m
 
@@ -99,19 +103,29 @@ def request_answer(operation, n, m):
 
 def can_perform(func):
     def _func(n, m):
-        n, m = _calculate(n), _calculate(m)
         if not IS_SERVER:
             return func(n, m)
-        elif func.__name__ in CAN_PERFORM:
-            answer = func(n['answer'], m['answer'])
-            return {
-                'answer': answer,
-                'stack': [n['stack'], m['stack']],
-                'values': [n['answer'], m['answer']],
-                'operation': func.__name__,
-            }
         else:
-            return request_answer(func.__name__, n, m)
+            n, m = _calculate(n), _calculate(m)
+
+            if func.__name__ in CAN_PERFORM:
+                answer = func(n['answer'], m['answer'])
+                return {
+                    'answer': answer,
+                    'stack': [n['stack'], m['stack']],
+                    'values': [n['answer'], m['answer']],
+                    'operation': func.__name__,
+                    'pid': getpid(),
+                    'port': SERVER_PORT,
+                }
+            else:
+                url_part = "%s/%s/%s/" % (func.__name__, n['answer'],
+                                          m['answer'])
+                answer = json_loads(get(urljoin(SERVER_PROXY,url_part)).content)
+                answer['stack'] = [n, m]
+                return answer
+
+    _func.name = func.__name__
 
     return _func
 
@@ -165,4 +179,5 @@ if __name__ == "__main__":
     if opts.divide:
         CAN_PERFORM.append('divide')
 
-    app.run(debug=True, port=opts.port)
+    SERVER_PORT = opts.port
+    app.run(debug=True, port=opts.port,threaded=True)
