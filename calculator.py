@@ -121,7 +121,8 @@ def can_perform(func):
             else:
                 url_part = "%s/%s/%s/" % (func.__name__, n['answer'],
                                           m['answer'])
-                answer = json_loads(get(urljoin(SERVER_PROXY,url_part)).content)
+                answer = json_loads(
+                    get(urljoin(SERVER_PROXY, url_part)).content)
                 answer['stack'] = [n, m]
                 return answer
 
@@ -180,4 +181,4 @@ if __name__ == "__main__":
         CAN_PERFORM.append('divide')
 
     SERVER_PORT = opts.port
-    app.run(debug=True, port=opts.port,threaded=True)
+    app.run(debug=True, port=opts.port, threaded=True)
