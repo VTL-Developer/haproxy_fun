@@ -1,17 +1,17 @@
-#haproxy_fun
+# haproxy_fun
 
-##About
+## About
 
 A testing ground set up for me to learn more about haproxy and load balancing, used with simple Python servers for calculating basic math operations, with some regard to ~~BE~~DMAS.
 
-##Requirements
+## Requirements
 
 - Python 2.7.6+
 - haproxy (I used version 1.4.24)
 - pip
 - Python packages specified by requirements.txt, you can install by `pip install -r requirements.txt`
 
-##How to use
+## How to use
 
 1. Run `python start.py` to start haproxy, and load all the servers specified in haproxy.ini
 2. You can make HTTP calls to the following url: `http://localhost:8000/calculate/<problem>/`, where `<problem>` is a math problem that the server(s) try to solve. All integers and decimal points are accepted, and the following notations are used for specific math operations:
@@ -21,7 +21,7 @@ A testing ground set up for me to learn more about haproxy and load balancing, u
   - `d` for division
 3. See the HTTP response with a stack trace.
 
-##How to add more servers
+## How to add more servers
 
 - Edit `haproxy.ini` to add more servers.
 - Fill in a new server (as a new section) with the following: `[server_<unique_name>]`
